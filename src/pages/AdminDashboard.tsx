@@ -21,6 +21,8 @@ import Footer from "@/components/Footer";
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState("overview");
+  const [showProductModal, setShowProductModal] = useState(false);
+  const [editingProduct, setEditingProduct] = useState(null);
 
   // Dummy analytics data
   const analytics = {
@@ -72,8 +74,8 @@ const AdminDashboard = () => {
     }
   ];
 
-  // Dummy products
-  const products = [
+  // Replace the products array with useState
+  const [products, setProducts] = useState([
     {
       id: "PROD-001",
       name: "Midnight Elegance Dress",
@@ -114,7 +116,35 @@ const AdminDashboard = () => {
       status: "out_of_stock",
       image: "https://images.unsplash.com/photo-1524592094714-0f0654e20314?w=150&h=200&fit=crop"
     }
-  ];
+  ]);
+
+  // Add a delete handler
+  const handleDeleteProduct = (id: string) => {
+    setProducts(products.filter((p) => p.id !== id));
+  };
+
+  const handleAddProduct = () => {
+    setEditingProduct(null);
+    setShowProductModal(true);
+  };
+
+  const handleEditProduct = (product) => {
+    setEditingProduct(product);
+    setShowProductModal(true);
+  };
+
+  const handleSaveProduct = (product) => {
+    if (editingProduct) {
+      setProducts(products.map((p) => (p.id === product.id ? product : p)));
+    } else {
+      setProducts([
+        ...products,
+        { ...product, id: `PROD-${Math.random().toString(36).substr(2, 5).toUpperCase()}` }
+      ]);
+    }
+    setShowProductModal(false);
+    setEditingProduct(null);
+  };
 
   // Dummy customers
   const customers = [
@@ -353,7 +383,7 @@ const AdminDashboard = () => {
             <Card className="p-6 shadow-card">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-2xl font-semibold">Product Management</h3>
-                <Button>
+                <Button onClick={handleAddProduct}>
                   <Plus className="h-4 w-4 mr-2" />
                   Add Product
                 </Button>
@@ -392,11 +422,11 @@ const AdminDashboard = () => {
                         </div>
                       </div>
                       <div className="flex gap-2 mt-4">
-                        <Button variant="outline" size="sm" className="flex-1">
+                        <Button variant="outline" size="sm" className="flex-1" onClick={() => handleEditProduct(product)}>
                           <Edit className="h-3 w-3 mr-1" />
                           Edit
                         </Button>
-                        <Button variant="outline" size="sm">
+                        <Button variant="outline" size="sm" onClick={() => handleDeleteProduct(product.id)}>
                           <Trash2 className="h-3 w-3" />
                         </Button>
                       </div>
@@ -405,6 +435,13 @@ const AdminDashboard = () => {
                 ))}
               </div>
             </Card>
+            {showProductModal && (
+              <ProductModal
+                product={editingProduct}
+                onClose={() => { setShowProductModal(false); setEditingProduct(null); }}
+                onSave={handleSaveProduct}
+              />
+            )}
           </TabsContent>
 
           <TabsContent value="customers" className="mt-8">
@@ -452,3 +489,77 @@ const AdminDashboard = () => {
 };
 
 export default AdminDashboard;
+
+const ProductModal = ({ product, onClose, onSave }) => {
+  const [form, setForm] = useState(
+    product || {
+      name: "",
+      category: "Women",
+      price: 0,
+      stock: 0,
+      sales: 0,
+      status: "active",
+      image: ""
+    }
+  );
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setForm({ ...form, [name]: value });
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSave({ ...form, price: Number(form.price), stock: Number(form.stock), sales: Number(form.sales), id: product?.id });
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+      <form onSubmit={handleSubmit} className="bg-white p-8 rounded shadow-md w-full max-w-lg">
+        <h2 className="text-2xl font-bold mb-4">{product ? "Edit Product" : "Add Product"}</h2>
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          <div>
+            <label className="block mb-1 font-medium">Name</label>
+            <input name="name" value={form.name} onChange={handleChange} className="w-full border rounded px-2 py-1" required />
+          </div>
+          <div>
+            <label className="block mb-1 font-medium">Category</label>
+            <select name="category" value={form.category} onChange={handleChange} className="w-full border rounded px-2 py-1">
+              <option>Women</option>
+              <option>Men</option>
+              <option>Accessories</option>
+            </select>
+          </div>
+          <div>
+            <label className="block mb-1 font-medium">Price</label>
+            <input name="price" type="number" value={form.price} onChange={handleChange} className="w-full border rounded px-2 py-1" required />
+          </div>
+          <div>
+            <label className="block mb-1 font-medium">Stock</label>
+            <input name="stock" type="number" value={form.stock} onChange={handleChange} className="w-full border rounded px-2 py-1" required />
+          </div>
+          <div>
+            <label className="block mb-1 font-medium">Sales</label>
+            <input name="sales" type="number" value={form.sales} onChange={handleChange} className="w-full border rounded px-2 py-1" />
+          </div>
+          <div>
+            <label className="block mb-1 font-medium">Status</label>
+            <select name="status" value={form.status} onChange={handleChange} className="w-full border rounded px-2 py-1">
+              <option value="active">Active</option>
+              <option value="low_stock">Low Stock</option>
+              <option value="out_of_stock">Out of Stock</option>
+            </select>
+          </div>
+        </div>
+        <div className="mb-4">
+          <label className="block mb-1 font-medium">Image URL</label>
+          <input name="image" value={form.image} onChange={handleChange} className="w-full border rounded px-2 py-1" />
+        </div>
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+          <Button type="submit">{product ? "Save Changes" : "Add Product"}</Button>
+        </div>
+      </form>
+    </div>
+  );
+};
